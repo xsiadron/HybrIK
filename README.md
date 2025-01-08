@@ -33,7 +33,7 @@ This repo contains the code of our papers:
 
 **HybrIK: A Hybrid Analytical-Neural Inverse Kinematics Solution for 3D Human Pose and Shape Estimation**, In CVPR 2021
 
-**HybrIK-X: Hybrid Analytical-Neural Inverse Kinematics for Whole-body Mesh Recovery**, ArXiv 2023
+**HybrIK-X: Hybrid Analytical-Neural Inverse Kinematics for Whole-body Mesh Recovery**, TPAMI 2025
 
 
 
@@ -46,6 +46,8 @@ This repo contains the code of our papers:
 </div> -->
 
 ## News :triangular_flag_on_post:
+[2024/12/31] HybrIK-X is accepted by TPAMI!
+
 [2023/06/02] Demo code for whole-body [HybrIK-X](https://arxiv.org/abs/2304.05690) is released.
 
 [2022/12/03] HybrIK for Blender [add-on](https://github.com/Jeff-sjtu/HybrIK/releases/download/add-on/hybrik_blender_addon.zip) is now available for download. The output of HybrIK can be imported to Blender and saved as `fbx`.
