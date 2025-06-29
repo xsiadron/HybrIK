@@ -1,7 +1,3 @@
-"""
-Skrypt do przetwarzania nowego wideo przez HybrIK
-Użycie: python process_new_video.py video.mp4
-"""
 import sys
 import os
 import subprocess
@@ -9,21 +5,16 @@ from pathlib import Path
 
 
 def process_video(video_path):
-    """Process video with HybrIK and generate results"""
-
-    # Sprawdź czy plik istnieje
     if not os.path.exists(video_path):
         print(f"❌ Nie znaleziono pliku: {video_path}")
         return False
 
-    # Pobierz nazwę pliku bez rozszerzenia
     video_name = Path(video_path).stem
     results_dir = f"results_{video_name}"
 
     print(f"🎬 Przetwarzanie wideo: {video_path}")
     print(f"📁 Wyniki będą zapisane w: {results_dir}")
 
-    # Uruchom demo HybrIK
     cmd = [
         "python", "scripts/demo_video_simple.py",
         "--video", video_path,
@@ -38,7 +29,6 @@ def process_video(video_path):
             cmd, check=True, capture_output=True, text=True)
         print("✅ HybrIK zakończony pomyślnie!")
 
-        # Sprawdź wygenerowane pliki
         pk_file = os.path.join(results_dir, "res.pk")
         video_2d = os.path.join(results_dir, f"res_2d_{video_name}.mp4")
 
