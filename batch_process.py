@@ -4,6 +4,7 @@ import subprocess
 import shutil
 from pathlib import Path
 from tqdm import tqdm
+import datetime
 
 
 class HybrIKBatchProcessor:
@@ -84,122 +85,91 @@ class HybrIKBatchProcessor:
             print(f"⚠️  Warning: Error moving results - {e}")
             return False
 
-    def verify_results(self, final_dir, video_name):
+    def verify_results(self, final_dir, video_name, elapsed_ms=None):
         expected_files = {
             "res.pk": "3D pose data",
             f"res_2d_{video_name}.mp4": "2D result video",
             "raw_images": "Raw frame images",
             "res_2d_images": "2D result images"
         }
-
-        print(f"   📋 Verifying generated files:")
-        for filename, description in expected_files.items():
+        missing = []
+        for filename in expected_files:
             filepath = os.path.join(final_dir, filename)
-            if os.path.exists(filepath):
-                if os.path.isdir(filepath):
-                    file_count = len(os.listdir(filepath))
-                    print(
-                        f"      ✅ {description}: {filename} ({file_count} files)")
-                else:
-                    file_size = os.path.getsize(filepath) / (1024*1024)
-                    print(
-                        f"      ✅ {description}: {filename} ({file_size:.1f} MB)")
-            else:
-                print(f"      ❌ Missing: {filename} ({description})")
+            if not os.path.exists(filepath):
+                missing.append(filename)
+        if not missing:
+            msg = f'Successfully generated files for "{video_name}.mp4"'
+            if elapsed_ms is not None:
+                msg += f' in {elapsed_ms}ms'
+            self.log(msg, level="SUCCESS")
+        else:
+            self.log(
+                f'Missing files for "{video_name}.mp4": {", ".join(missing)}', level="ERROR")
+
+    def log(self, message, level="INFO"):
+        now = datetime.datetime.now()
+        timestamp = int(now.timestamp())
+        print(f"{now.strftime('%d.%m.%Y')}|{timestamp}|{level}|{message}")
 
     def process_single_video(self, video_path, video_index, total_videos):
         video_name = Path(video_path).stem
         video_filename = Path(video_path).name
-
-        print(
-            f"\n🎬 Processing video {video_index}/{total_videos}: {video_filename}")
-
+        self.log(f'Processing video "{video_filename}"', level="INFO")
         temp_dir, final_dir = self.setup_directories(video_name)
-        print(f"   📁 Output directory: {final_dir}")
-
-        print(f"   🚀 Running HybrIK inference...")
-        if self.use_stabilization:
-            print(f"   🎯 Using temporal stabilization for smooth animations")
+        start = datetime.datetime.now()
         success, stdout, stderr = self.run_hybrik_processing(
             video_path, temp_dir, self.use_stabilization)
-
+        elapsed_ms = int((datetime.datetime.now() -
+                         start).total_seconds() * 1000)
         if success:
-            print(f"   ✅ HybrIK processing completed successfully")
-
-            print(f"   📦 Moving results to output directory...")
             if self.move_results(temp_dir, final_dir):
-                self.verify_results(final_dir, video_name)
+                self.verify_results(final_dir, video_name,
+                                    elapsed_ms=elapsed_ms)
                 self.processed_count += 1
                 return True
             else:
-                print(f"   ❌ Failed to move results")
+                self.log(
+                    f'Failed to move results for "{video_filename}"', level="ERROR")
                 self.failed_count += 1
                 return False
         else:
-            print(f"   ❌ HybrIK processing failed")
+            self.log(
+                f'HybrIK processing failed for "{video_filename}"', level="ERROR")
             if stderr:
-                print("\n===== STDERR (error output from HybrIK) =====\n" +
-                      stderr + "\n============================================\n")
+                self.log(f'{stderr.strip()}', level="ERROR")
             if stdout:
-                print("\n===== STDOUT (output from HybrIK) =====\n" +
-                      stdout + "\n========================================\n")
-
+                self.log(f'{stdout.strip()}', level="ERROR")
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
-
             self.failed_count += 1
             return False
 
     def print_summary(self):
-        print(f"\n{'='*60}")
-        print(f"📊 PROCESSING SUMMARY")
-        print(f"✅ Successfully processed: {self.processed_count} videos")
-        print(f"❌ Failed: {self.failed_count} videos")
-        print(f"📁 Results saved in: {self.output_dir}/")
-
+        self.log(
+            f'Successfully processed: {self.processed_count} videos', level="INFO")
+        self.log(f'Failed: {self.failed_count} videos', level="INFO")
+        self.log(f'Results saved in: {self.output_dir}/', level="INFO")
         if self.processed_count > 0:
-            print(f"\n🎉 Batch processing completed!")
-            print(f"Check the '{self.output_dir}' directory for results.")
+            self.log(
+                f'Batch processing completed! Check the "{self.output_dir}" directory for results.', level="SUCCESS")
 
     def run(self):
-        print("🚀 HybrIK Batch Video Processor with Temporal Stabilization")
-        print("="*70)
-
-        if self.use_stabilization:
-            print("🎯 Stabilization enabled - animations will be smoother!")
-        else:
-            print("⚠️  Stabilization disabled - using original processing")
-
         if not os.path.exists(self.input_dir):
-            print(f"❌ Input directory '{self.input_dir}' does not exist!")
-            print(
-                f"Create the '{self.input_dir}' folder and place video files to process.")
+            self.log(
+                f'Input directory "{self.input_dir}" does not exist!', level="ERROR")
+            self.log(
+                f'Create the "{self.input_dir}" folder and place video files to process.', level="ERROR")
             return
-
         os.makedirs(self.output_dir, exist_ok=True)
-
         video_files = self.find_video_files()
-
         if not video_files:
-            print(f"❌ No video files found in '{self.input_dir}'")
-            print(f"Supported formats: {', '.join(self.video_extensions)}")
+            self.log(
+                f'No video files found in "{self.input_dir}"', level="ERROR")
+            self.log('Supported formats: ' +
+                     ', '.join(self.video_extensions), level="INFO")
             return
-
-        print(f"📹 Found {len(video_files)} video files:")
-        for i, video_file in enumerate(video_files, 1):
-            print(f"   {i}. {Path(video_file).name}")
-
-        print(f"\n� Starting batch processing...")
-
         for i, video_path in enumerate(video_files, 1):
-            success = self.process_single_video(
-                video_path, i, len(video_files))
-
-            if success:
-                print(f"✅ {Path(video_path).name} - processed successfully")
-            else:
-                print(f"❌ {Path(video_path).name} - processing failed")
-
+            self.process_single_video(video_path, i, len(video_files))
         self.print_summary()
 
 
