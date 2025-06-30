@@ -7,9 +7,10 @@ from tqdm import tqdm
 
 
 class HybrIKBatchProcessor:
-    def __init__(self, input_dir="input", output_dir="output"):
+    def __init__(self, input_dir="input", output_dir="output", use_stabilization=True):
         self.input_dir = input_dir
         self.output_dir = output_dir
+        self.use_stabilization = use_stabilization
         self.video_extensions = ['.mp4', '.avi',
                                  '.mov', '.mkv', '.wmv', '.flv', '.webm']
         self.processed_count = 0
@@ -34,14 +35,25 @@ class HybrIKBatchProcessor:
         os.makedirs(final_dir, exist_ok=True)
         return temp_dir, final_dir
 
-    def run_hybrik_processing(self, video_path, temp_dir):
+    def run_hybrik_processing(self, video_path, temp_dir, use_stabilization=True):
+        # Choose stabilized or original script
+        script_name = "scripts/demo_video_stabilized.py" if use_stabilization else "scripts/demo_video_simple.py"
+        
         cmd = [
-            "python", "scripts/demo_video_simple.py",
+            "python", script_name,
             "--video-name", video_path,
             "--out-dir", temp_dir,
             "--save-pk",
             "--save-img"
         ]
+        
+        # Add stabilization parameters if using stabilized script
+        if use_stabilization:
+            cmd.extend([
+                "--smoothing-alpha", "0.1",  # Bardzo mocne wygładzanie (0.1 = bardzo gładkie)
+                "--gaussian-sigma", "2.5",   # Silne post-processing smoothing
+                "--confidence-threshold", "0.3"  # Niski próg dla lepszego trackingu
+            ])
 
         try:
             result = subprocess.run(
@@ -107,8 +119,10 @@ class HybrIKBatchProcessor:
         print(f"   📁 Output directory: {final_dir}")
 
         print(f"   🚀 Running HybrIK inference...")
+        if self.use_stabilization:
+            print(f"   🎯 Using temporal stabilization for smooth animations")
         success, stdout, stderr = self.run_hybrik_processing(
-            video_path, temp_dir)
+            video_path, temp_dir, self.use_stabilization)
 
         if success:
             print(f"   ✅ HybrIK processing completed successfully")
@@ -145,8 +159,13 @@ class HybrIKBatchProcessor:
             print(f"Check the '{self.output_dir}' directory for results.")
 
     def run(self):
-        print("🚀 HybrIK Batch Video Processor")
-        print("="*60)
+        print("🚀 HybrIK Batch Video Processor with Temporal Stabilization")
+        print("="*70)
+        
+        if self.use_stabilization:
+            print("🎯 Stabilization enabled - animations will be smoother!")
+        else:
+            print("⚠️  Stabilization disabled - using original processing")
 
         if not os.path.exists(self.input_dir):
             print(f"❌ Input directory '{self.input_dir}' does not exist!")
@@ -182,7 +201,7 @@ class HybrIKBatchProcessor:
 
 
 def main():
-    processor = HybrIKBatchProcessor()
+    processor = HybrIKBatchProcessor(use_stabilization=True)  # Enable stabilization by default
     processor.run()
 
 
