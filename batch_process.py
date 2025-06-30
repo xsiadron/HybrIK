@@ -36,9 +36,8 @@ class HybrIKBatchProcessor:
         return temp_dir, final_dir
 
     def run_hybrik_processing(self, video_path, temp_dir, use_stabilization=True):
-        # Choose stabilized or original script
         script_name = "scripts/demo_video_stabilized.py" if use_stabilization else "scripts/demo_video_simple.py"
-        
+
         cmd = [
             "python", script_name,
             "--video-name", video_path,
@@ -46,13 +45,13 @@ class HybrIKBatchProcessor:
             "--save-pk",
             "--save-img"
         ]
-        
-        # Add stabilization parameters if using stabilized script
+
         if use_stabilization:
             cmd.extend([
-                "--smoothing-alpha", "0.1",  # Bardzo mocne wygładzanie (0.1 = bardzo gładkie)
-                "--gaussian-sigma", "2.5",   # Silne post-processing smoothing
-                "--confidence-threshold", "0.3"  # Niski próg dla lepszego trackingu
+                "--smoothing-alpha", "0.0001",
+                "--gaussian-sigma", "10000",
+                "--confidence-threshold", "1",
+                "--stabilization-mode", "kalman"
             ])
 
         try:
@@ -139,7 +138,11 @@ class HybrIKBatchProcessor:
         else:
             print(f"   ❌ HybrIK processing failed")
             if stderr:
-                print(f"   Error details: {stderr[:200]}...")
+                print("\n===== STDERR (error output from HybrIK) =====\n" +
+                      stderr + "\n============================================\n")
+            if stdout:
+                print("\n===== STDOUT (output from HybrIK) =====\n" +
+                      stdout + "\n========================================\n")
 
             if os.path.exists(temp_dir):
                 shutil.rmtree(temp_dir)
@@ -161,7 +164,7 @@ class HybrIKBatchProcessor:
     def run(self):
         print("🚀 HybrIK Batch Video Processor with Temporal Stabilization")
         print("="*70)
-        
+
         if self.use_stabilization:
             print("🎯 Stabilization enabled - animations will be smoother!")
         else:
@@ -201,7 +204,7 @@ class HybrIKBatchProcessor:
 
 
 def main():
-    processor = HybrIKBatchProcessor(use_stabilization=True)  # Enable stabilization by default
+    processor = HybrIKBatchProcessor(use_stabilization=True)
     processor.run()
 
 
